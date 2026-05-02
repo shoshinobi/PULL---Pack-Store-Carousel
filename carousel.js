@@ -39,9 +39,10 @@ const ELLIPSE_RX = 980;    // px
 const ELLIPSE_RY = 1080;   // px
 
 const SCALE_BREAKPOINTS = [  // ← tune these to control zoom per breakpoint
-  { minWidth: 1440, scale: 150 },
-  { minWidth: 1024, scale: 120 },
-  { minWidth:  768, scale: 150 },
+  { minWidth: 1900, scale: 200 },
+  { minWidth: 1440, scale: 175 },
+  { minWidth: 1024, scale: 150 },
+  { minWidth:  768, scale: 125 },
   { minWidth:    0, scale: 150 },
 ];
 
