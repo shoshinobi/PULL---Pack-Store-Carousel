@@ -1,0 +1,106 @@
+/* Pack Store Carousel — Stylesheet
+   Designer tokens are in :root. Everything else is structural.          */
+
+/* ─── Tokens ─────────────────────────────────────────────────────────── */
+
+:root {
+  --glow-rgb:   200, 200, 255;  /* edge glow colour (R, G, B)            */
+  --glow-alpha: 0.20;           /* edge glow opacity  0 = off, 1 = full  */
+  --glow-size:  8px;            /* edge glow spread radius               */
+  --card-blur:  1.0px;          /* blur on non-hero cards                */
+  --card-dim:   0.7;            /* brightness of non-hero cards (0–1)    */
+}
+
+/* ─── Reset & page ───────────────────────────────────────────────────── */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: #0c0c18;
+}
+
+/* ─── Carousel stage ─────────────────────────────────────────────────── */
+
+/* Full-viewport wrapper. JS applies transform/transform-origin here
+   to zoom the entire carousel uniformly (see applyCarouselScale).     */
+#carousel-stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ─── Card ───────────────────────────────────────────────────────────── */
+
+/* Positioned at (0,0); GSAP handles all movement via transforms.
+   Fixed px size keeps the carousel geometry consistent at any viewport. */
+.card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 187px;          /* 3:4 portrait — matches 13vw at 1440px */
+  height: 250px;
+  cursor: pointer;
+  will-change: transform;
+  background: transparent;
+}
+
+.card.hero { cursor: default; }
+
+/* ─── Pack image ─────────────────────────────────────────────────────── */
+
+/* Non-hero: blurred and dimmed. The invisible drop-shadow (0px) is a
+   placeholder so the filter list length matches .hero img — required
+   for smooth browser interpolation when the class toggles.            */
+.card img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: blur(var(--card-blur))
+          brightness(var(--card-dim))
+          drop-shadow(0 0 0px rgba(var(--glow-rgb), 0));
+  transition: filter 0.5s ease;
+}
+
+/* Hero: sharp, full brightness, edge glow traces the PNG alpha.
+   transition-delay lets the card settle before the glow blooms.      */
+.card.hero img {
+  filter: blur(0px)
+          brightness(1)
+          drop-shadow(0 0 var(--glow-size) rgba(var(--glow-rgb), var(--glow-alpha)));
+  transition-delay: 0.2s;
+}
+
+/* ─── Hero background glow ───────────────────────────────────────────── */
+
+/* Blurred radial gradient behind the hero image. z-index: -1 keeps it
+   inside the card's stacking context (created by will-change: transform)
+   so it never bleeds behind other cards.                              */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120%;
+  height: 120%;
+  background: radial-gradient(ellipse 60% 65% at center,
+    rgba(123, 114, 187, 0.941) 0%, transparent 70%);
+  filter: blur(24px);
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.card.hero::before {
+  opacity: 1;
+  transition-delay: 0.2s;
+}
