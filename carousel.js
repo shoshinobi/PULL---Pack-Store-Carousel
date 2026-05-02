@@ -68,6 +68,32 @@ const OPP_SIDE_STAGGER    = 0.080;
 const LONG_JUMP_THRESHOLD = 2;
 const LONG_JUMP_SLOW      = 1.25;
 
+// Card hover:
+//   HERO_HOVER_SCALE     — scale multiplier when hovering the hero card
+//   NON_HERO_HOVER_SCALE — scale multiplier for satellite cards on hover
+//   HOVER_GLOW_MULT      — multiplies glow radius and opacity when hovering the hero
+const HERO_HOVER_SCALE     = 1.025;
+const NON_HERO_HOVER_SCALE = 1.03;
+const HOVER_GLOW_MULT      = 1.25;
+
+// Click effects:
+//   CLICK_SCALE_DOWN      — how far the hero card squishes on click (e.g. 0.94 = 6% smaller)
+//   CLICK_DOWN_DURATION   — seconds for the squish phase
+//   CLICK_DOWN_EASE       — easing for the squish phase (any GSAP ease string)
+const CLICK_SCALE_DOWN    = 0.98;
+const CLICK_DOWN_DURATION = 0.20;
+const CLICK_DOWN_EASE     = 'power2.out';
+
+// Touch navigation:
+//   SWIPE_THRESHOLD — minimum horizontal travel (px) to register a swipe
+const SWIPE_THRESHOLD = 50;
+
+// Read glow base values from CSS tokens so hover calculations stay in sync with style.css
+const _root      = getComputedStyle(document.documentElement);
+const GLOW_RGB   = _root.getPropertyValue('--glow-rgb').trim();
+const GLOW_ALPHA = parseFloat(_root.getPropertyValue('--glow-alpha'));
+const GLOW_SIZE  = parseFloat(_root.getPropertyValue('--glow-size'));
+
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -84,10 +110,11 @@ let activeIndex = Math.min(INITIAL_INDEX, N - 1);
 //   riseOffset     hero entry lift, px
 //   shakeRotation  inactivity wiggle, degrees
 //   scaleMult      departure pulse multiplier
+//   hoverScale     hover scale multiplier (1 = normal; HERO/NON_HERO_HOVER_SCALE when active)
 //   cardIdx        immutable index used to anchor hero z-index immediately
 const proxies = cards.map((_, i) => ({
   pos: i - activeIndex, yOffset: 0, riseOffset: 0,
-  shakeRotation: 0, scaleMult: 1, cardIdx: i,
+  shakeRotation: 0, scaleMult: 1, hoverScale: 1, cardIdx: i,
 }));
 
 let idleTween      = null;
@@ -95,6 +122,12 @@ let idleTimeout    = null;
 let idleCardIdx    = -1;
 let shakeTl        = null;
 let inactivityTimer = null;
+let shakeDeadline   = 0;
+let currentDurations = { d1: 0.175, d2: 0.200, d3: 0.250, mult: 1 };
+let hoverTl = null;
+const heroHoverProxy = { scale: 1, glow: 1 };
+let heroEffectsEnabled    = true;
+let nonHeroEffectsEnabled = true;
 
 
 // ─── Geometry ─────────────────────────────────────────────────────────────────
@@ -146,7 +179,7 @@ function applyState(card, proxy) {
 
   gsap.set(card, {
     x, y, rotation,
-    scale:   posScale * proxy.scaleMult,
+    scale:   posScale * proxy.scaleMult * proxy.hoverScale,
     opacity: 1,
     zIndex:  proxy.cardIdx === activeIndex ? 1000 : Math.round(900 - abs * 150),
   });
@@ -204,7 +237,72 @@ function startShake(idx) {
 function resetInactivity() {
   clearTimeout(inactivityTimer);
   stopShake();
+  shakeDeadline = Date.now() + 6000;
   inactivityTimer = setTimeout(() => startShake(activeIndex), 6000);
+}
+
+
+// ─── Hero hover ───────────────────────────────────────────────────────────────
+
+function applyHeroHover() {
+  const idx   = activeIndex;
+  const proxy = proxies[idx];
+  const img   = cards[idx]?.querySelector('img');
+  if (!proxy || !img) return;
+  proxy.hoverScale = heroHoverProxy.scale;
+  applyState(cards[idx], proxy);
+  const alpha = GLOW_ALPHA * heroHoverProxy.glow;
+  const size  = GLOW_SIZE  * heroHoverProxy.glow;
+  img.style.filter = `blur(0px) brightness(1) drop-shadow(0 0 ${size}px rgba(${GLOW_RGB}, ${alpha}))`;
+}
+
+function startHeroHover() {
+  const img = cards[activeIndex]?.querySelector('img');
+  if (!img) return;
+  img.style.transition = 'none';
+  hoverTl?.kill();
+  hoverTl = gsap.to(heroHoverProxy, {
+    scale: HERO_HOVER_SCALE, glow: HOVER_GLOW_MULT,
+    duration: 0.20, ease: 'power2.out',
+    onUpdate: applyHeroHover,
+  });
+}
+
+function endHeroHover() {
+  hoverTl?.kill();
+  hoverTl = gsap.to(heroHoverProxy, {
+    scale: 1, glow: 1,
+    duration: 0.2, ease: 'power2.out',
+    onUpdate: applyHeroHover,
+    onComplete: () => {
+      const img = cards[activeIndex]?.querySelector('img');
+      if (img) { img.style.filter = ''; img.style.transition = ''; }
+      proxies[activeIndex].hoverScale = 1;
+      applyState(cards[activeIndex], proxies[activeIndex]);
+    },
+  });
+}
+
+function resetHeroHover() {
+  hoverTl?.kill();
+  hoverTl = null;
+  heroHoverProxy.scale = 1;
+  heroHoverProxy.glow  = 1;
+  const img = cards[activeIndex]?.querySelector('img');
+  if (img) { img.style.filter = ''; img.style.transition = ''; }
+  proxies.forEach(p => { p.hoverScale = 1; });
+}
+
+
+// ─── Click effect ─────────────────────────────────────────────────────────────
+
+function triggerClickEffect(i) {
+  const proxy = proxies[i];
+  const upd   = () => applyState(cards[i], proxy);
+  gsap.killTweensOf(proxy, 'scaleMult');
+  gsap.timeline()
+    .to(proxy, { scaleMult: CLICK_SCALE_DOWN, duration: CLICK_DOWN_DURATION, ease: CLICK_DOWN_EASE, onUpdate: upd })
+    .to(proxy, { scaleMult: 1.00,             duration: 0.45, ease: 'back.out(2.5)', onUpdate: upd });
 }
 
 
@@ -218,9 +316,10 @@ function resetInactivity() {
 
 function selectCard(clickedI) {
   if (clickedI === activeIndex) return;
+  resetHeroHover();
   stopShake();
   stopIdle();
-  proxies.forEach(p => { gsap.killTweensOf(p); p.scaleMult = 1; });
+  proxies.forEach(p => { gsap.killTweensOf(p); p.scaleMult = 1; p.hoverScale = 1; });
 
   const prevIdx   = activeIndex;
   const prevProxy = proxies[prevIdx];
@@ -247,6 +346,7 @@ function selectCard(clickedI) {
   const d2 = 0.200 * durationMult;
   const d3 = 0.250 * durationMult;
   const heroArrivalTime = d1 + d2;  // end of K01+K02 — when selected card reaches hero position
+  currentDurations = { d1, d2, d3, mult: durationMult };
 
   // Two-phase wave: same-side cards ripple outward from the selected pack immediately;
   // opposite-side cards start just before the hero lands.
@@ -280,7 +380,55 @@ function selectCard(clickedI) {
 
 // ─── Event listeners ──────────────────────────────────────────────────────────
 
-cards.forEach((card, i) => card.addEventListener('click', () => { resetInactivity(); selectCard(i); }));
+cards.forEach((card, i) => {
+  card.addEventListener('click', () => {
+    const name = card.querySelector('img')?.alt ?? `Card ${i}`;
+    if (i === activeIndex) {
+      console.log(`[Carousel] Hero clicked: ${name}`);
+      if (heroEffectsEnabled) triggerClickEffect(i);
+    } else {
+      console.log(`[Carousel] Card clicked: ${name}`);
+      resetInactivity();
+      selectCard(i);
+    }
+  });
+  card.addEventListener('mouseenter', () => {
+    if (i === activeIndex) {
+      if (heroEffectsEnabled) startHeroHover();
+    } else if (nonHeroEffectsEnabled) {
+      const proxy = proxies[i];
+      gsap.killTweensOf(proxy, 'hoverScale');
+      gsap.to(proxy, { hoverScale: NON_HERO_HOVER_SCALE, duration: 0.20, ease: 'power2.out',
+        onUpdate: () => applyState(card, proxy) });
+    }
+  });
+  card.addEventListener('mouseleave', () => {
+    if (i === activeIndex) { if (heroEffectsEnabled) endHeroHover(); return; }
+    if (!nonHeroEffectsEnabled) return;
+    const proxy = proxies[i];
+    gsap.killTweensOf(proxy, 'hoverScale');
+    gsap.to(proxy, { hoverScale: 1, duration: 0.20, ease: 'power2.out',
+      onUpdate: () => applyState(card, proxy) });
+  });
+});
+
+document.getElementById('hero-effects-toggle').addEventListener('change', e => {
+  heroEffectsEnabled = e.target.checked;
+  if (!heroEffectsEnabled) resetHeroHover();
+});
+
+document.getElementById('non-hero-effects-toggle').addEventListener('change', e => {
+  nonHeroEffectsEnabled = e.target.checked;
+  if (!nonHeroEffectsEnabled) {
+    cards.forEach((card, i) => {
+      if (i === activeIndex) return;
+      const proxy = proxies[i];
+      gsap.killTweensOf(proxy, 'hoverScale');
+      gsap.to(proxy, { hoverScale: 1, duration: 0.20, ease: 'power2.out',
+        onUpdate: () => applyState(card, proxy) });
+    });
+  }
+});
 
 window.addEventListener('resize', () => {
   applyCarouselScale();
@@ -294,6 +442,22 @@ window.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft'  && activeIndex > 0)     { keyUnlockAt = Date.now() + 450; selectCard(activeIndex - 1); }
   if (e.key === 'ArrowRight' && activeIndex < N - 1) { keyUnlockAt = Date.now() + 450; selectCard(activeIndex + 1); }
 });
+
+let swipeStartX = 0;
+let swipeStartY = 0;
+window.addEventListener('touchstart', e => {
+  swipeStartX = e.changedTouches[0].clientX;
+  swipeStartY = e.changedTouches[0].clientY;
+}, { passive: true });
+window.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - swipeStartX;
+  const dy = e.changedTouches[0].clientY - swipeStartY;
+  if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dy) > Math.abs(dx)) return;
+  resetInactivity();
+  if (Date.now() < keyUnlockAt) return;
+  if (dx < 0 && activeIndex < N - 1) { keyUnlockAt = Date.now() + 450; selectCard(activeIndex + 1); }
+  if (dx > 0 && activeIndex > 0)     { keyUnlockAt = Date.now() + 450; selectCard(activeIndex - 1); }
+}, { passive: true });
 
 
 // ─── Startup ──────────────────────────────────────────────────────────────────

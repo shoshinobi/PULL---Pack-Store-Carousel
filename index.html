@@ -8,6 +8,38 @@
 </head>
 <body>
 
+  <div id="ui-overlay">
+
+    <div class="ui-card" id="ui-label">
+      <div class="ui-label-top">
+        <p class="ui-title">Pack Store Carousel</p>
+        <p class="ui-subtitle">Demo</p>
+      </div>
+      <p class="ui-hint">Click, swipe, or use the arrow keys</p>
+      <div class="ui-keys"><kbd>←</kbd><kbd>→</kbd></div>
+    </div>
+
+    <div class="ui-card" id="ui-stats">
+      <p class="ui-section-title">Live Stats</p>
+      <div id="ui-stats-body"></div>
+    </div>
+
+    <div class="ui-card" id="ui-toggle-card">
+      <p class="ui-section-title">Pack Interactions</p>
+      <label class="ui-toggle">
+        <input type="checkbox" id="hero-effects-toggle" checked>
+        <span class="ui-toggle-track"><span class="ui-toggle-thumb"></span></span>
+        <span class="ui-toggle-label">Hero Pack</span>
+      </label>
+      <label class="ui-toggle">
+        <input type="checkbox" id="non-hero-effects-toggle" checked>
+        <span class="ui-toggle-track"><span class="ui-toggle-thumb"></span></span>
+        <span class="ui-toggle-label">Satellite Packs</span>
+      </label>
+    </div>
+
+  </div>
+
   <div id="carousel-stage">
     <div class="card"><img src="packs/blue.png"      alt="Blue"></div>
     <div class="card"><img src="packs/green.png"     alt="Green"></div>
@@ -23,6 +55,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/CustomEase.min.js"
           crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="carousel.js" defer></script>
+  <script src="stats.js" defer></script>
 
 </body>
 </html>
