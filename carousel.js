@@ -40,8 +40,8 @@ const ELLIPSE_RY = 1080;   // px
 
 const SCALE_BREAKPOINTS = [  // ← tune these to control zoom per breakpoint
   { minWidth: 1900, scale: 200 },
-  { minWidth: 1440, scale: 175 },
-  { minWidth: 1024, scale: 150 },
+  { minWidth: 1440, scale: 150 },
+  { minWidth: 1024, scale: 125 },
   { minWidth:  768, scale: 125 },
   { minWidth:    0, scale: 150 },
 ];
@@ -56,13 +56,26 @@ const HERO_SCALE = 1.25;  // card scale at pos = 0
 const BASE_SCALE = 1.00;  // card scale far from centre
 const SCALE_ZONE = 1.5;   // arc distance from centre where scale ramp begins
 
+// Directional shuffle timing:
+//   SAME_SIDE_STAGGER  — ripple delay between each same-side card (from selected outward)
+//   OPP_SIDE_LEAD_IN   — seconds BEFORE hero arrives that the opposite side starts (increase = earlier)
+//   OPP_SIDE_STAGGER   — ripple delay between each opposite-side card (from old hero outward)
+//   LONG_JUMP_THRESHOLD — jump distance (cards) above which animation slows down
+//   LONG_JUMP_SLOW      — duration multiplier applied when jump exceeds threshold (e.g. 1.5 = 50% slower)
+const SAME_SIDE_STAGGER   = 0.080;
+const OPP_SIDE_LEAD_IN    = 0.300;
+const OPP_SIDE_STAGGER    = 0.080;
+const LONG_JUMP_THRESHOLD = 2;
+const LONG_JUMP_SLOW      = 1.25;
+
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
 const cards = gsap.utils.toArray('.card');
 const N     = cards.length;
 
-let activeIndex = Math.floor(N / 2);  // start with the middle card as hero
+const INITIAL_INDEX = 2;  // which card starts as hero (0 = first, clamped to available cards)
+let activeIndex = Math.min(INITIAL_INDEX, N - 1);
 
 // Each proxy is the single source of truth for one card's animation state.
 // GSAP tweens these objects; applyState() maps them to CSS transforms each frame.
@@ -227,8 +240,16 @@ function selectCard(clickedI) {
   gsap.to(hp, { riseOffset: -12, duration: 0.350, ease: 'back.out(2)', delay: 0.250,
                 onUpdate: () => applyState(cards[clickedI], hp) });
 
-  const staggerStep = 0.090 / Math.max(1, Math.abs(clickedI - prevIdx));
+  // Slow down all phase durations for large jumps.
+  const jump         = Math.abs(clickedI - prevIdx);
+  const durationMult = jump > LONG_JUMP_THRESHOLD ? LONG_JUMP_SLOW : 1;
+  const d1 = 0.175 * durationMult;
+  const d2 = 0.200 * durationMult;
+  const d3 = 0.250 * durationMult;
+  const heroArrivalTime = d1 + d2;  // end of K01+K02 — when selected card reaches hero position
 
+  // Two-phase wave: same-side cards ripple outward from the selected pack immediately;
+  // opposite-side cards start just before the hero lands.
   cards.forEach((card, i) => {
     const proxy     = proxies[i];
     const targetPos = i - activeIndex;
@@ -237,10 +258,21 @@ function selectCard(clickedI) {
     const p2 = fromPos + (targetPos - fromPos) * P2_BLEND;
     const upd = () => applyState(card, proxy);
 
-    gsap.timeline({ delay: Math.abs(i - clickedI) * staggerStep })
-      .to(proxy, { pos: p1, duration: 0.175, ease: 'K01', onUpdate: upd })
-      .to(proxy, { pos: p2, duration: 0.200, ease: 'K02', onUpdate: upd })
-      .to(proxy, { pos: targetPos, duration: 0.250, ease: 'K03', onUpdate: upd,
+    let delay;
+    if (i === clickedI) {
+      delay = 0;
+    } else if (Math.sign(i - prevIdx) === Math.sign(clickedI - prevIdx)) {
+      // Same side as the selected pack — ripple outward from selected pack
+      delay = Math.abs(i - clickedI) * SAME_SIDE_STAGGER;
+    } else {
+      // Old hero or opposite side — start just before hero lands, ripple from old hero outward
+      delay = heroArrivalTime - OPP_SIDE_LEAD_IN + Math.abs(i - prevIdx) * OPP_SIDE_STAGGER;
+    }
+
+    gsap.timeline({ delay })
+      .to(proxy, { pos: p1, duration: d1, ease: 'K01', onUpdate: upd })
+      .to(proxy, { pos: p2, duration: d2, ease: 'K02', onUpdate: upd })
+      .to(proxy, { pos: targetPos, duration: d3, ease: 'K03', onUpdate: upd,
           onComplete: i === clickedI ? () => { idleTimeout = setTimeout(() => startIdle(clickedI), 300); } : undefined });
   });
 }
