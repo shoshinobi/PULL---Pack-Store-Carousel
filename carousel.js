@@ -74,7 +74,7 @@ const LONG_JUMP_SLOW      = 1.25;
 //   HOVER_GLOW_MULT      — multiplies glow radius and opacity when hovering the hero
 const HERO_HOVER_SCALE     = 1.025;
 const NON_HERO_HOVER_SCALE = 1.03;
-const HOVER_GLOW_MULT      = 1.25;
+const HOVER_GLOW_MULT      = 1.30;
 
 // Click effects:
 //   CLICK_SCALE_DOWN      — how far the hero card squishes on click (e.g. 0.94 = 6% smaller)
@@ -87,6 +87,10 @@ const CLICK_DOWN_EASE     = 'power2.out';
 // Touch navigation:
 //   SWIPE_THRESHOLD — minimum horizontal travel (px) to register a swipe
 const SWIPE_THRESHOLD = 50;
+
+// Drag navigation:
+//   DRAG_CLICK_THRESHOLD — px of movement before a mousedown counts as a drag (not a click)
+const DRAG_CLICK_THRESHOLD = 6;
 
 // Read glow base values from CSS tokens so hover calculations stay in sync with style.css
 const _root      = getComputedStyle(document.documentElement);
@@ -129,6 +133,11 @@ const heroHoverProxy = { scale: 1, glow: 1 };
 let heroEffectsEnabled    = true;
 let nonHeroEffectsEnabled = true;
 
+let suppressNextClick = false;  // set after a committed drag so card click handlers don't fire
+let dragActive        = false;
+let dragStartX        = 0;
+let dragCommitted     = false;  // true once movement exceeds DRAG_CLICK_THRESHOLD
+
 
 // ─── Geometry ─────────────────────────────────────────────────────────────────
 
@@ -143,16 +152,21 @@ function getEllipse() {
   };
 }
 
+function getCarouselScale() {
+  const w  = window.innerWidth;
+  const h  = window.innerHeight;
+  const bp = SCALE_BREAKPOINTS.find(b => w >= b.minWidth) ?? SCALE_BREAKPOINTS.at(-1);
+  return (bp.scale / 100) * (h < MIN_VIEWPORT_HEIGHT ? h / MIN_VIEWPORT_HEIGHT : 1);
+}
+
 // Scales #carousel-stage from the hero's screen position so the hero stays
 // anchored. Width-based scale from SCALE_BREAKPOINTS is capped by height when
 // viewport is shorter than MIN_VIEWPORT_HEIGHT.
 function applyCarouselScale() {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  const bp = SCALE_BREAKPOINTS.find(b => w >= b.minWidth) ?? SCALE_BREAKPOINTS.at(-1);
-  const scale = (bp.scale / 100) * (h < MIN_VIEWPORT_HEIGHT ? h / MIN_VIEWPORT_HEIGHT : 1);
+  const scale = getCarouselScale();
+  const w     = window.innerWidth;
   const stage = document.getElementById('carousel-stage');
-  stage.style.transformOrigin = `${ELLIPSE_CX ?? w / 2}px ${h * HERO_Y_VH}px`;
+  stage.style.transformOrigin = `${ELLIPSE_CX ?? w / 2}px ${window.innerHeight * HERO_Y_VH}px`;
   stage.style.transform = `scale(${scale})`;
 }
 
@@ -382,6 +396,7 @@ function selectCard(clickedI) {
 
 cards.forEach((card, i) => {
   card.addEventListener('click', () => {
+    if (suppressNextClick) return;
     const name = card.querySelector('img')?.alt ?? `Card ${i}`;
     if (i === activeIndex) {
       console.log(`[Carousel] Hero clicked: ${name}`);
@@ -459,6 +474,43 @@ window.addEventListener('touchend', e => {
   if (dx > 0 && activeIndex > 0)     { keyUnlockAt = Date.now() + 450; selectCard(activeIndex - 1); }
 }, { passive: true });
 
+
+// ─── Drag navigation ──────────────────────────────────────────────────────────
+// Drag left or right to select the adjacent card in that direction — one card
+// per gesture. Fires as soon as the threshold is crossed (not on mouseup), so
+// the springy selectCard() animation starts immediately. Mouseup fires before
+// the click event, so suppressNextClick keeps card click handlers quiet.
+
+const dragStage = document.getElementById('carousel-stage');
+
+dragStage.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  dragActive    = true;
+  dragCommitted = false;
+  dragStartX    = e.clientX;
+  document.body.style.cursor = 'grabbing';
+  e.preventDefault();
+});
+
+window.addEventListener('mousemove', e => {
+  if (!dragActive || dragCommitted) return;
+  const dx = e.clientX - dragStartX;
+  if (Math.abs(dx) < DRAG_CLICK_THRESHOLD) return;
+  dragCommitted     = true;
+  suppressNextClick = true;
+  resetInactivity();
+  if (dx > 0 && activeIndex > 0)     selectCard(activeIndex - 1);
+  if (dx < 0 && activeIndex < N - 1) selectCard(activeIndex + 1);
+});
+
+window.addEventListener('mouseup', () => {
+  dragActive = false;
+  document.body.style.cursor = '';
+  setTimeout(() => { suppressNextClick = false; }, 0);
+});
+
+dragStage.addEventListener('mouseleave', () => { document.body.style.cursor = ''; });
+dragStage.addEventListener('mouseenter', () => { if (!dragActive) document.body.style.cursor = 'grab'; });
 
 // ─── Startup ──────────────────────────────────────────────────────────────────
 

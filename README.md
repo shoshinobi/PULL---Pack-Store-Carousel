@@ -49,6 +49,35 @@ Left and right arrow keys step through cards one at a time. A 450 ms debounce pr
 ### Touch / Swipe Navigation
 Swiping left or right on a touch device navigates the carousel in the corresponding direction. A minimum travel threshold (`SWIPE_THRESHOLD`) filters out incidental touches, and a diagonal guard ignores predominantly vertical gestures. The same 450 ms debounce is shared with keyboard navigation.
 
+### Mouse Drag Navigation
+Clicking and dragging the carousel stage moves it one card in the drag direction. The selection fires as soon as the drag threshold is crossed — not on mouse-up — so the springy `selectCard()` animation begins immediately and feels responsive rather than deferred.
+
+A `suppressNextClick` flag prevents the synthetic click event that browsers emit after a mouse-up from accidentally re-triggering the card's click handler. The flag is set the instant the drag threshold is crossed (during `mousemove`) and cleared via `setTimeout(0)` in the `mouseup` handler, which guarantees it runs after the click event has been dispatched but before any future pointer interaction.
+
+The cursor changes to a grab hand while the pointer is over the carousel stage, and to a grabbing fist while a drag is in progress.
+
+### Animated Gradient Background
+`background.js` creates a layer of large, softly blurred radial gradient blobs (`#bg-layer`) that drift across the screen behind the carousel. Each blob is independently animated to a random position, size, and opacity on a loop. Placement is edge-biased so blobs concentrate near the viewport boundaries, keeping the centre clear for the cards.
+
+The blob system exposes a live control panel in the UI overlay with sliders for movement speed, blob size, and edge bias, colour swatches for each blob's hue, and a randomise button that immediately re-scatters all blobs to new positions.
+
+### Rive Particle Background
+`bg-rive.js` loads `bgparticles.riv` onto a full-viewport WebGL2 canvas (`#rive-bg`) that sits above the gradient blob layer in the stacking order. The Rive animation is driven by a ViewModel (`ViewModel1`) whose inputs are bound at runtime:
+
+| Input | Type | What it does |
+|---|---|---|
+| `width` / `height` | number | Kept in sync with `window.innerWidth` / `window.innerHeight` on load and resize so the animation always fills the viewport exactly. |
+| `direction` | enum | Particle travel direction: `up`, `down`, `left`, or `right`. |
+| `baseSize` | number | Base size of each particle. |
+| `particleOpacity` | number | Opacity of the particle layer (0–1). |
+| `particleCount` | number | Number of active particles. |
+| `speed` | number | Particle movement speed. |
+| `speedVar` | number | Per-particle speed variation. |
+| `leftPadding` | number | Left boundary of the particle spawn region (0–1, fraction of canvas width). |
+| `rightPadding` | number | Right boundary of the particle spawn region (0–1, fraction of canvas width). |
+
+All inputs are controlled from a dedicated UI panel at the bottom of the screen. Direction is set via a D-pad control; the remaining parameters are numeric input fields.
+
 ### Responsive Scaling
 The entire carousel stage is scaled as a single unit from the hero's screen position using a breakpoint table. Every card, glow, and blur scales together without any layout reflow. A minimum viewport height cap prevents the hero card from clipping the top of the screen on short displays.
 
@@ -108,11 +137,12 @@ All tuning values live at the top of `carousel.js`. Nothing else needs to be tou
 | `LONG_JUMP_THRESHOLD` | `2` | Jump distance in cards above which the slowdown multiplier applies. |
 | `LONG_JUMP_SLOW` | `1.25` | Duration multiplier for long jumps. `1.5` = 50% slower phases. |
 
-### Touch Navigation
+### Touch & Drag Navigation
 
 | Variable | Default | What it does |
 |---|---|---|
-| `SWIPE_THRESHOLD` | `50` | Minimum horizontal travel in px to register a swipe. Diagonal swipes are ignored. |
+| `SWIPE_THRESHOLD` | `50` | Minimum horizontal travel in px to register a touch swipe. Diagonal swipes are ignored. |
+| `DRAG_CLICK_THRESHOLD` | `6` | Minimum horizontal travel in px before a mouse-down is treated as a drag rather than a click. |
 
 ---
 

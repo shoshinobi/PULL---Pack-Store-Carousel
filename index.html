@@ -4,38 +4,110 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pack Store Carousel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600&family=Roboto+Mono:wght@400&display=swap">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+  <div id="bg-layer"></div>
+  <canvas id="rive-bg"></canvas>
+
+  <div class="ui-card" id="ui-label">
+    <div class="ui-label-top">
+      <p class="ui-title">Pack Store Carousel</p>
+      <p class="ui-subtitle">Demo</p>
+    </div>
+    <p class="ui-hint">Click, swipe, or use the arrow keys</p>
+    <div class="ui-keys"><kbd>←</kbd><kbd>→</kbd></div>
+  </div>
+
+  <div id="ui-pills">
+    <button class="ui-pill">Open Pack</button>
+    <button class="ui-pill">Browse</button>
+    <button class="ui-pill">Trade</button>
+    <button class="ui-pill">Collection</button>
+  </div>
+
   <div id="ui-overlay">
 
-    <div class="ui-card" id="ui-label">
-      <div class="ui-label-top">
-        <p class="ui-title">Pack Store Carousel</p>
-        <p class="ui-subtitle">Demo</p>
+    <div id="ui-cards-row">
+
+      <div class="ui-card" id="ui-stats">
+        <p class="ui-section-title">Live Stats</p>
+        <div id="ui-stats-body"></div>
       </div>
-      <p class="ui-hint">Click, swipe, or use the arrow keys</p>
-      <div class="ui-keys"><kbd>←</kbd><kbd>→</kbd></div>
+
+      <div class="ui-card" id="ui-toggle-card">
+        <p class="ui-section-title">Pack Interactions</p>
+        <label class="ui-toggle">
+          <input type="checkbox" id="hero-effects-toggle" checked>
+          <span class="ui-toggle-track"><span class="ui-toggle-thumb"></span></span>
+          <span class="ui-toggle-label">Hero Pack</span>
+        </label>
+        <label class="ui-toggle">
+          <input type="checkbox" id="non-hero-effects-toggle" checked>
+          <span class="ui-toggle-track"><span class="ui-toggle-thumb"></span></span>
+          <span class="ui-toggle-label">Satellite Packs</span>
+        </label>
+      </div>
+
     </div>
 
-    <div class="ui-card" id="ui-stats">
-      <p class="ui-section-title">Live Stats</p>
-      <div id="ui-stats-body"></div>
-    </div>
+    <div id="ui-particle-row">
 
-    <div class="ui-card" id="ui-toggle-card">
-      <p class="ui-section-title">Pack Interactions</p>
-      <label class="ui-toggle">
-        <input type="checkbox" id="hero-effects-toggle" checked>
-        <span class="ui-toggle-track"><span class="ui-toggle-thumb"></span></span>
-        <span class="ui-toggle-label">Hero Pack</span>
-      </label>
-      <label class="ui-toggle">
-        <input type="checkbox" id="non-hero-effects-toggle" checked>
-        <span class="ui-toggle-track"><span class="ui-toggle-thumb"></span></span>
-        <span class="ui-toggle-label">Satellite Packs</span>
-      </label>
+      <div class="ui-card" id="ui-direction">
+        <p class="ui-section-title">Particle Direction</p>
+        <div class="direction-pad">
+          <button class="dir-btn" id="dir-up"    data-dir="up">↑</button>
+          <button class="dir-btn" id="dir-left"  data-dir="left">←</button>
+          <div class="dir-nub"></div>
+          <button class="dir-btn" id="dir-right" data-dir="right">→</button>
+          <button class="dir-btn" id="dir-down"  data-dir="down">↓</button>
+        </div>
+      </div>
+
+      <div class="ui-card" id="ui-particle-settings">
+        <p class="ui-section-title">Particle Settings</p>
+        <div class="pf-cols">
+          <div class="pf-col">
+            <div class="pf-row">
+              <label class="pf-label">Base Size</label>
+              <input class="pf-input" id="pf-base-size" type="number" value="1"  min="0.1" step="0.1">
+            </div>
+            <div class="pf-row">
+              <label class="pf-label">Opacity</label>
+              <input class="pf-input" id="pf-opacity"   type="number" value="1"  min="0" max="1" step="0.05">
+            </div>
+            <div class="pf-row">
+              <label class="pf-label">Count</label>
+              <input class="pf-input" id="pf-count"     type="number" value="50" min="1" step="1">
+            </div>
+          </div>
+          <div class="pf-col">
+            <div class="pf-row">
+              <label class="pf-label">Speed</label>
+              <input class="pf-input" id="pf-speed"     type="number" value="100" min="0" step="1">
+            </div>
+            <div class="pf-row">
+              <label class="pf-label">Variation</label>
+              <input class="pf-input" id="pf-speed-var" type="number" value="80"  min="0" step="1">
+            </div>
+          </div>
+          <div class="pf-col">
+            <div class="pf-row">
+              <label class="pf-label">Left Pad</label>
+              <input class="pf-input" id="pf-left-padding"  type="number" value="0.33" min="0" max="1" step="0.01">
+            </div>
+            <div class="pf-row">
+              <label class="pf-label">Right Pad</label>
+              <input class="pf-input" id="pf-right-padding" type="number" value="0.66" min="0" max="1" step="0.01">
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
   </div>
@@ -49,6 +121,7 @@
     <div class="card"><img src="packs/yellow.png"    alt="Yellow"></div>
   </div>
 
+  <script src="https://unpkg.com/@rive-app/webgl2@latest/rive.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/gsap.min.js"
           integrity="sha512-NcZdtrT77bJr4STcmsGAESr06BYGE8woZdSdEgqnpyqac7sugNO+Tr4bGwGF3MsnEkGKhU2KL2xh6Ec+BqsaHA=="
           crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -56,6 +129,9 @@
           crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="carousel.js" defer></script>
   <script src="stats.js" defer></script>
+  <script src="background.js" defer></script>
+  <script src="bg-rive.js" defer></script>
+  <script src="ui-sheen.js" defer></script>
 
 </body>
 </html>
