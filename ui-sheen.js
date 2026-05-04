@@ -17,7 +17,7 @@
     ease:         'power2.out', // GSAP ease string
     bgColor:      '#ffffff', // hex — card background tint
     bgRestAlpha:  0.04,      // card background opacity at rest
-    bgHoverAlpha: 0.08,      // card background opacity on hover
+    bgHoverAlpha: 0.09,      // card background opacity on hover
   };
 
   function hexToRgb(hex) {
