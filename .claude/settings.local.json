@@ -4,7 +4,15 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:pull-3-d-card-model.vercel.app)",
       "Bash(curl -s \"https://pull-3-d-card-model.vercel.app/\")",
-      "Bash(curl -s \"https://pull-3-d-card-model.vercel.app/style.css\")"
+      "Bash(curl -s \"https://pull-3-d-card-model.vercel.app/style.css\")",
+      "Bash(curl -s \"https://unpkg.com/@rive-app/webgl2@latest/package.json\")",
+      "Bash(curl -sI \"https://unpkg.com/@rive-app/webgl2@latest/rive.js\")",
+      "Bash(curl -s \"https://registry.npmjs.org/@rive-app/webgl2\")",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s \"https://registry.npmjs.org/@rive-app/canvas\")",
+      "Bash(curl -s \"https://api.github.com/repos/rive-app/rive-wasm/releases?per_page=10\")",
+      "Bash(curl -s \"https://api.github.com/repos/rive-app/rive-wasm/tags?per_page=15\")",
+      "Bash(curl -s \"https://registry.npmjs.org/@rive-app%2Fwebgl2-advanced\")"
     ]
   }
 }
